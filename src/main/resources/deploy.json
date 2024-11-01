@@ -1,0 +1,7 @@
+{
+  "runtime": "4.7-java8",
+  "workerSize": 0.1,
+  "applicationName": "sys-sfdc-account-impl",
+  "workers": 1,
+  "autoStart": true
+}

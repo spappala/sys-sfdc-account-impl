@@ -1,0 +1,221 @@
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd   http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+	http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+  <http:listener-config name="sys-sfdc-account-impl-httpListenerConfig">
+    <http:listener-connection host="0.0.0.0" port="8081"></http:listener-connection>
+  </http:listener-config>
+  <apikit:config api="resource::bf4b2d9f-4424-4c43-bacd-be84ddbb2b6b:sys-sfdc-account-impl:1.0.0:raml:zip:sys-sfdc-account-impl.raml" httpStatusVarName="httpStatus" name="sys-sfdc-account-impl-config" outboundHeadersMapName="outboundHeaders"></apikit:config>
+  <configuration-properties doc:name="Configuration properties" file="config.yaml"></configuration-properties>
+  <salesforce:sfdc-config name="Sfdc-config">
+    <salesforce:basic-connection securityToken="${sfdc.securityToken}" password="${sfdc.password}" username="${sfdc.username}"></salesforce:basic-connection>
+  </salesforce:sfdc-config>
+  <api-gateway:autodiscovery apiId="20026513" flowRef="sys-sfdc-account-impl-main" doc:name="Autodiscovery" />
+  <flow name="sys-sfdc-account-impl-main">
+    <http:listener config-ref="sys-sfdc-account-impl-httpListenerConfig" path="/api/*">
+      <http:response statusCode="#[vars.httpStatus default 200]">
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]">
+        <http:body>#[payload]</http:body>
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:error-response>
+    </http:listener>
+    <apikit:router config-ref="sys-sfdc-account-impl-config"></apikit:router>
+    <error-handler>
+      <on-error-propagate type="APIKIT:BAD_REQUEST">
+        <ee:transform doc:name="Transform Message">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]>
+            </ee:set-payload>
+          </ee:message>
+          <ee:variables>
+            <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+          </ee:variables>
+        </ee:transform>
+      </on-error-propagate>
+      <on-error-propagate type="APIKIT:NOT_FOUND">
+        <ee:transform doc:name="Transform Message">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]>
+            </ee:set-payload>
+          </ee:message>
+          <ee:variables>
+            <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+          </ee:variables>
+        </ee:transform>
+      </on-error-propagate>
+      <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+        <ee:transform doc:name="Transform Message">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]>
+            </ee:set-payload>
+          </ee:message>
+          <ee:variables>
+            <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+          </ee:variables>
+        </ee:transform>
+      </on-error-propagate>
+      <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+        <ee:transform doc:name="Transform Message">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]>
+            </ee:set-payload>
+          </ee:message>
+          <ee:variables>
+            <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+          </ee:variables>
+        </ee:transform>
+      </on-error-propagate>
+      <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+        <ee:transform doc:name="Transform Message">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]>
+            </ee:set-payload>
+          </ee:message>
+          <ee:variables>
+            <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+          </ee:variables>
+        </ee:transform>
+      </on-error-propagate>
+      <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+        <ee:transform doc:name="Transform Message">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]>
+            </ee:set-payload>
+          </ee:message>
+          <ee:variables>
+            <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+          </ee:variables>
+        </ee:transform>
+      </on-error-propagate>
+    </error-handler>
+  </flow>
+  <flow name="sys-sfdc-account-impl-console">
+    <http:listener config-ref="sys-sfdc-account-impl-httpListenerConfig" path="/console/*">
+      <http:response statusCode="#[vars.httpStatus default 200]">
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]">
+        <http:body>#[payload]</http:body>
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:error-response>
+    </http:listener>
+    <apikit:console config-ref="sys-sfdc-account-impl-config"></apikit:console>
+    <error-handler>
+      <on-error-propagate type="APIKIT:NOT_FOUND">
+        <ee:transform doc:name="Transform Message">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]>
+            </ee:set-payload>
+          </ee:message>
+          <ee:variables>
+            <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+          </ee:variables>
+        </ee:transform>
+      </on-error-propagate>
+    </error-handler>
+  </flow>
+  <flow name="get:\accounts:sys-sfdc-account-impl-config">
+    <logger doc:id="sjgjrq" doc:name="Logger" message="#[payload]"></logger>
+    <salesforce:query-all config-ref="Sfdc-config" doc:id="vxgnxc" doc:name="Query all">
+      <salesforce:salesforce-query>SELECT Id,Name ,Description FROM Account order by createdDate DESC limit 10</salesforce:salesforce-query>
+    </salesforce:query-all>
+        <set-variable value="#[payload]" variableName="sfdc-Input" doc:name="Set variable" doc:id="kocjoi" />
+        <ee:transform doc:name="Transform" doc:id="gqaboh" >
+            <ee:message>
+                <ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger doc:name="Logger" doc:id="ucnfbb" message="#[payload]"/>
+  </flow>
+  <flow name="get:\contracts:sys-sfdc-account-impl-config">
+    <ee:transform doc:name="Transform Message">
+      <ee:message>
+        <ee:set-payload>
+          <![CDATA[%dw 2.0
+output application/json
+---
+{
+  contract_id: "C-1001",
+  employee: {
+    employee_id: "E-12345",
+    first_name: "John",
+    last_name: "Doe",
+    department: "Sales",
+    position: "Sales Manager"
+  },
+  contract_terms: {
+    start_date: "2024-01-01",
+    end_date: "2025-01-01",
+    contract_type: "Full-Time",
+    contract_status: "Active"
+  },
+  salary_details: {
+    currency: "USD",
+    annual_salary: 85000,
+    bonus: {
+      "type": "Performance-Based",
+      percentage: 10
+    }
+  },
+  benefits: {
+    health_insurance: "Provided",
+    retirement_plan: "401k",
+    vacation_days: 20,
+    sick_days: 10
+  },
+  expiration_notice: "30 days before end date",
+  renewal_option: "Automatic renewal unless 30 days prior notice"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]>
+        </ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </flow>
+  <flow name="post:\contracts:application\json:sys-sfdc-account-impl-config">
+    <ee:transform doc:name="Transform Message">
+      <ee:message>
+        <ee:set-payload>
+          <![CDATA[%dw 2.0
+output application/json
+---
+{
+  Id: "C-1002",
+  status: "Success",
+  message: "Contract Record created successfully"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]>
+        </ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </flow>
+</mule>
